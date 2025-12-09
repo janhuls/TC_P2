@@ -11,7 +11,7 @@ import Control.Monad (replicateM)
 
 import Lexer
 import Parser
-import Model
+import Model hiding (Commands)
 import Algebra
 
 

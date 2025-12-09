@@ -33,36 +33,39 @@ import Model
 
 %%
 
-Program     : Program '.' Rule      { let (Program rs) = $1 in Program ($3 : rs) }
-            | Rule                  { Program [$1] }
+Program   : Rules                 { Program $1}
 
-Rule        : ident arrow Commands  { Rule $1 $3 }
+Rules     : Rule '.' Rules        { $1 : $3 }
+          | Rule '.'              { [$1] }
 
-Commands    : Command               { Commands [$1] }
-            | Commands ',' Command  { let (Commands cs) = $1 in Commands ($2 : cs)}
+Rule      : ident arrow Commands  { Rule $1 $3 }
 
-Command     : go                    { GoComm }
-            | take                  { TakeComm }
-            | mark                  { MarkComm }
-            | nothing               { NothingComm }
-            | turn Dir              { TurnComm $2 }
-            | case Dir of Alts end  { CaseComm $2 $4}
+Commands  : Command               { Commands [$1] }
+          | Commands ',' Command  { let (Commands cs) = $1 in Commands (cs ++ [$3])}
 
-Dir         : left                  { LeftDir }
-            | right                 { RightDir }
-            | front                 { FrontDir }
+Command   : go                    { GoComm }
+          | take                  { TakeComm }
+          | mark                  { MarkComm }
+          | nothing               { NothingComm }
+          | turn Dir              { TurnComm $2 }
+          | case Dir of Alts end  { CaseComm $2 $4}
+          | ident                 { CallComm $1 }
 
-Alts        : Alt                   { Alts [$1]}
-            | Alts ';' Alt          { let (Alts as) = $1 in Alts ($3 : $1) }
+Dir       : left                  { LeftDir }
+          | right                 { RightDir }
+          | front                 { FrontDir }
 
-Alt         : Pat arrow Commands    { Alt $1 $3 }
+Alts      : Alt                   { Alts [$1]}
+          | Alts ';' Alt          { let (Alts as) = $1 in Alts (as ++ [$3]) }
 
-Pat         : empty                 { EmptyPat }
-            | lambda                { LambdaPat }
-            | debris                { DebrisPat }
-            | asteroid              { AsteroidPat }
-            | boundary              { BoundaryPat }
-            | '_'                   { UnderscorePat }
+Alt       : Pat arrow Commands    { Alt $1 $3 }
+
+Pat       : empty                 { EmptyPat }
+          | lambda                { LambdaPat }
+          | debris                { DebrisPat }
+          | asteroid              { AsteroidPat }
+          | boundary              { BoundaryPat }
+          | '_'                   { UnderscorePat }
 
 {
 

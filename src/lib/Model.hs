@@ -13,7 +13,7 @@ data Rule = Rule String Commands deriving Show
 
 newtype Commands = Commands [Command] deriving Show
 
-data Command = GoComm | TakeComm | MarkComm | NothingComm | TurnComm Dir | CaseComm Dir Alts deriving Show
+data Command = GoComm | TakeComm | MarkComm | NothingComm | TurnComm Dir | CaseComm Dir Alts | CallComm String deriving Show
 
 data Dir = LeftDir | RightDir | FrontDir deriving Show
 

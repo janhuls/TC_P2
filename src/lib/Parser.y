@@ -23,18 +23,46 @@ import Model
   right                   {Righttok}
   front                   {Front}
   ';'                     {Semicolon}
-  Empty                   {Emptytoken}
-  Lambda                  {Lambdatoken}
-  Debris                  {Debristoken}
-  Asteroid                {Asteroidtoken}
-  Boundary                {Boundarytoken}
+  empty                   {Emptytoken}
+  lambda                  {Lambdatoken}
+  debris                  {Debristoken}
+  asteroid                {Asteroidtoken}
+  boundary                {Boundarytoken}
   '_'                     {Underscore}
   ident                   {Ident $$}  
 
 %%
 
-Program : ident arrow Command { Program $2 $3}
+Program     : Program '.' Rule      { let (Program rs) = $1 in Program ($3 : rs) }
+            | Rule                  { Program [$1] }
 
+Rule        : ident arrow Commands  { Rule $1 $3 }
+
+Commands    : Command               { Commands [$1] }
+            | Commands ',' Command  { let (Commands cs) = $1 in Commands ($2 : cs)}
+
+Command     : go                    { GoComm }
+            | take                  { TakeComm }
+            | mark                  { MarkComm }
+            | nothing               { NothingComm }
+            | turn Dir              { TurnComm $2 }
+            | case Dir of Alts end  { CaseComm $2 $4}
+
+Dir         : left                  { LeftDir }
+            | right                 { RightDir }
+            | front                 { FrontDir }
+
+Alts        : Alt                   { Alts [$1]}
+            | Alts ';' Alt          { let (Alts as) = $1 in Alts ($3 : $1) }
+
+Alt         : Pat arrow Commands    { Alt $1 $3 }
+
+Pat         : empty                 { EmptyPat }
+            | lambda                { LambdaPat }
+            | debris                { DebrisPat }
+            | asteroid              { AsteroidPat }
+            | boundary              { BoundaryPat }
+            | '_'                   { UnderscorePat }
 
 {
 

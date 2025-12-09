@@ -7,14 +7,18 @@ data Token = Arrow | Dot | Comma | Go | Take | Mark | Emptycommand | Turn | Case
     deriving Show
 
 -- Exercise 2
-data Program = Program [(String, Command)] deriving Show
+newtype Program = Program [Rule] deriving Show
+
+data Rule = Rule String Commands deriving Show
+
+newtype Commands = Commands [Command] deriving Show
 
 data Command = GoComm | TakeComm | MarkComm | NothingComm | TurnComm Dir | CaseComm Dir Alts deriving Show
 
 data Dir = LeftDir | RightDir | FrontDir deriving Show
 
-data Alts = Alts Alt [Alt] deriving Show
+newtype Alts = Alts [Alt] deriving Show
 
-data Alt = Alt Pat [Command] deriving Show
+data Alt = Alt Pat Commands deriving Show
 
 data Pat = EmptyPat | LambdaPat | DebrisPat | AsteroidPat | BoundaryPat | UnderscorePat deriving Show

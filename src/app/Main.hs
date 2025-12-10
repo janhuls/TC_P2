@@ -37,3 +37,9 @@ main = do
   putStrLn "Check program"
   putStrLn ""
   print validProgram
+  putStrLn ""
+  let environment = toEnvironment chars
+  putStrLn "Parsed environment"
+  putStrLn ""
+  print environment
+  putStrLn ""

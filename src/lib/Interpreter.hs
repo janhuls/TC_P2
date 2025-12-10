@@ -11,7 +11,7 @@ import Control.Monad (replicateM)
 
 import Lexer
 import Parser
-import Model hiding (Commands)
+import qualified Model as M
 import Algebra
 
 
@@ -68,8 +68,8 @@ printSpace s =
 
 
 -- These three should be defined by you
-type Ident = ()
-type Commands = ()
+type Ident = String
+type Commands = M.Commands
 type Heading = ()
 
 type Environment = Map Ident Commands
@@ -83,7 +83,11 @@ data Step =  Done  Space Pos Heading
 
 -- | Exercise 8
 toEnvironment :: String -> Environment
-toEnvironment = undefined
+toEnvironment s = if isValid then environment else error "invalid program" where
+  program = parser $ alexScanTokens s
+  isValid = checkProgram program
+  (M.Program rules) = program
+  environment = foldl (\acc (M.Rule ident cmds) -> Map.insert ident cmds acc) Map.empty rules
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step

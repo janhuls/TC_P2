@@ -15,10 +15,10 @@ newtype Commands = Commands [Command] deriving Show
 
 data Command = GoComm | TakeComm | MarkComm | NothingComm | TurnComm Dir | CaseComm Dir Alts | CallComm String deriving Show
 
-data Dir = LeftDir | RightDir | FrontDir deriving Show
+data Dir = LeftDir | RightDir | FrontDir deriving (Show, Eq)
 
 newtype Alts = Alts [Alt] deriving Show
 
 data Alt = Alt Pat Commands deriving Show
 
-data Pat = EmptyPat | LambdaPat | DebrisPat | AsteroidPat | BoundaryPat | UnderscorePat deriving Show
+data Pat = EmptyPat | LambdaPat | DebrisPat | AsteroidPat | BoundaryPat | UnderscorePat deriving (Show, Eq)

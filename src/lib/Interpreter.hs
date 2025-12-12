@@ -70,7 +70,16 @@ printSpace s =
 -- These three should be defined by you
 type Ident = String
 type Commands = M.Commands
-type Heading = ()
+type Heading = Direction
+
+data Direction = N | E | S | W
+
+getNextPos :: Pos -> Heading -> Pos
+getNextPos (x, y) dir = case dir of 
+  N -> (x, y - 1)
+  E -> (x + 1, y)
+  S -> (x, y + 1)
+  W -> (x - 1, y)
 
 type Environment = Map Ident Commands
 
@@ -91,6 +100,24 @@ toEnvironment s = if isValid then environment else error "invalid program" where
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step
-step = undefined
-
+step e (ArrowState space pos heading (M.Commands (firstCommand:stack))) 
+  = undefined where
+    nextPos = getNextPos pos heading
+    state' = case firstCommand of 
+      M.GoComm        -> if Map.member nextPos space 
+                        then 
+                          case space Map.! nextPos of 
+                            Empty     -> ArrowState space nextPos heading (M.Commands stack)
+                            Lambda    -> ArrowState space nextPos heading (M.Commands stack)
+                            Debris    -> ArrowState space nextPos heading (M.Commands stack)
+                            Asteroid  -> ArrowState space pos heading (M.Commands stack)
+                            Boundary  -> ArrowState space pos heading (M.Commands stack)
+                        else
+                          ArrowState space pos heading (M.Commands stack)
+      M.TakeComm      -> undefined
+      M.MarkComm      -> undefined
+      M.NothingComm   -> undefined
+      M.TurnComm d    -> undefined
+      M.CaseComm d as -> undefined
+      M.CallComm com  -> undefined
 

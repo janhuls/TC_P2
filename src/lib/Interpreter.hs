@@ -13,6 +13,7 @@ import Lexer
 import Parser
 import qualified Model as M
 import Algebra
+import Foreign (toBool)
 
 
 data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary
@@ -81,6 +82,28 @@ getNextPos (x, y) dir = case dir of
   S -> (x, y + 1)
   W -> (x - 1, y)
 
+dirToPos :: M.Dir -> Heading -> Pos -> Pos 
+dirToPos d h p = getNextPos p (doTurn h d)
+
+rotateLeft d = case d of 
+  N -> E
+  E -> S
+  S -> W
+  W -> N
+
+rotateRight = rotateLeft . rotateLeft . rotateLeft 
+
+doTurn :: Heading -> M.Dir -> Heading
+doTurn d dir = case dir of 
+                M.LeftDir  -> rotateLeft d
+                M.RightDir -> rotateRight d
+                _          -> d
+
+lookDir :: M.Dir -> ArrowState -> Contents
+lookDir d (ArrowState space pos heading _) = if Map.member next space then space Map.! next else Boundary 
+  where
+    next = dirToPos d heading pos
+
 type Environment = Map Ident Commands
 
 type Stack       =  Commands
@@ -100,24 +123,51 @@ toEnvironment s = if isValid then environment else error "invalid program" where
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step
-step e (ArrowState space pos heading (M.Commands (firstCommand:stack))) 
-  = undefined where
+step _ (ArrowState s p h (M.Commands [])) = Done s p h
+step e state@(ArrowState space pos heading (M.Commands (firstCommand:stack)))
+  = getStep 
+  where
     nextPos = getNextPos pos heading
-    state' = case firstCommand of 
-      M.GoComm        -> if Map.member nextPos space 
-                        then 
-                          case space Map.! nextPos of 
-                            Empty     -> ArrowState space nextPos heading (M.Commands stack)
-                            Lambda    -> ArrowState space nextPos heading (M.Commands stack)
-                            Debris    -> ArrowState space nextPos heading (M.Commands stack)
-                            Asteroid  -> ArrowState space pos heading (M.Commands stack)
-                            Boundary  -> ArrowState space pos heading (M.Commands stack)
-                        else
-                          ArrowState space pos heading (M.Commands stack)
-      M.TakeComm      -> undefined
-      M.MarkComm      -> undefined
-      M.NothingComm   -> undefined
-      M.TurnComm d    -> undefined
-      M.CaseComm d as -> undefined
-      M.CallComm com  -> undefined
+    nextStack = M.Commands stack
+    getContents point = if Map.member point space then space Map.! point else Boundary
+    nextContent = getContents nextPos
+    currentContent = getContents pos
+    getStep = case firstCommand of 
+      M.GoComm        -> case nextContent of 
+                          Empty     -> makeSucceedStep $ ArrowState space nextPos heading nextStack
+                          Lambda    -> makeSucceedStep $ ArrowState space nextPos heading nextStack
+                          Debris    -> makeSucceedStep $ ArrowState space nextPos heading nextStack
+                          Asteroid  -> makeSucceedStep $ ArrowState space pos heading nextStack
+                          Boundary  -> makeSucceedStep $ ArrowState space pos heading nextStack
+      M.TakeComm      -> if currentContent == Debris || currentContent == Lambda 
+                         then
+                           makeSucceedStep $ ArrowState (Map.delete pos space) pos heading nextStack
+                         else
+                           Fail $ "Nothing to take, space: " ++ printSpace space ++ "\npos: " ++ show pos
+      M.MarkComm      -> makeSucceedStep $ ArrowState (Map.adjust (const Lambda) pos space) pos heading nextStack
+      M.NothingComm   -> makeSucceedStep state
+      M.TurnComm d    -> makeSucceedStep $ ArrowState space pos (doTurn heading d) nextStack
+      M.CaseComm d as -> getMatchingCommands (lookDir d state) as 
+      M.CallComm com  -> if Map.member com e then prepend $ getCommandList(e Map.! com) else Fail $ "Command: " ++ show com ++ "was not found in environment: " ++ show e
+
+    getCommandList :: Commands -> [M.Command]
+    getCommandList (M.Commands cs) = cs
+
+    getMatchingCommands :: Contents -> M.Alts -> Step
+    getMatchingCommands _ (M.Alts []) = Fail "Incomplete pattern match"
+    getMatchingCommands c (M.Alts ((M.Alt pat (M.Commands cs)):as)) = if matches pat c then prepend cs else getMatchingCommands c (M.Alts as)
+
+    prepend commands = Ok $ ArrowState space pos heading (M.Commands (commands ++ stack))
+
+    matches :: M.Pat -> Contents -> Bool
+    matches p c = case p of 
+      M.UnderscorePat -> True
+      M.EmptyPat      -> c == Empty
+      M.LambdaPat     -> c == Lambda
+      M.DebrisPat     -> c == Debris
+      M.AsteroidPat   -> c == Asteroid
+      M.BoundaryPat   -> c == Boundary
+
+    makeSucceedStep :: ArrowState -> Step
+    makeSucceedStep as@(ArrowState sp po he (M.Commands st)) = if null st then Done sp po he else Ok as
 

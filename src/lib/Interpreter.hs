@@ -70,7 +70,7 @@ printSpace s =
 
 -- These three should be defined by you
 type Ident = String
-type Commands = M.Commands
+type Commands = [M.Command]
 type Heading = Direction
 
 data Direction = N | E | S | W
@@ -119,45 +119,41 @@ toEnvironment s = if isValid then environment else error "invalid program" where
   program = parser $ alexScanTokens s
   isValid = checkProgram program
   (M.Program rules) = program
-  environment = foldl (\acc (M.Rule ident cmds) -> Map.insert ident cmds acc) Map.empty rules
+  environment = foldl (\acc (M.Rule ident (M.Commands cmds)) -> Map.insert ident cmds acc) Map.empty rules
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step
-step _ (ArrowState s p h (M.Commands [])) = Done s p h
-step e state@(ArrowState space pos heading (M.Commands (firstCommand:stack)))
+step _ (ArrowState s p h []) = Done s p h
+step e state@(ArrowState space pos heading (firstCommand:stack))
   = getStep 
   where
     nextPos = getNextPos pos heading
-    nextStack = M.Commands stack
     getContents point = if Map.member point space then space Map.! point else Boundary
     nextContent = getContents nextPos
     currentContent = getContents pos
     getStep = case firstCommand of 
       M.GoComm        -> case nextContent of 
-                          Empty     -> makeSucceedStep $ ArrowState space nextPos heading nextStack
-                          Lambda    -> makeSucceedStep $ ArrowState space nextPos heading nextStack
-                          Debris    -> makeSucceedStep $ ArrowState space nextPos heading nextStack
-                          Asteroid  -> makeSucceedStep $ ArrowState space pos heading nextStack
-                          Boundary  -> makeSucceedStep $ ArrowState space pos heading nextStack
+                          Empty     -> makeSucceedStep $ ArrowState space nextPos heading stack
+                          Lambda    -> makeSucceedStep $ ArrowState space nextPos heading stack
+                          Debris    -> makeSucceedStep $ ArrowState space nextPos heading stack
+                          Asteroid  -> makeSucceedStep $ ArrowState space pos heading stack
+                          Boundary  -> makeSucceedStep $ ArrowState space pos heading stack
       M.TakeComm      -> if currentContent == Debris || currentContent == Lambda 
                          then
-                           makeSucceedStep $ ArrowState (Map.delete pos space) pos heading nextStack
+                           makeSucceedStep $ ArrowState (Map.delete pos space) pos heading stack
                          else
                            Fail $ "Nothing to take, space: " ++ printSpace space ++ "\npos: " ++ show pos
-      M.MarkComm      -> makeSucceedStep $ ArrowState (Map.adjust (const Lambda) pos space) pos heading nextStack
+      M.MarkComm      -> makeSucceedStep $ ArrowState (Map.adjust (const Lambda) pos space) pos heading stack
       M.NothingComm   -> makeSucceedStep state
-      M.TurnComm d    -> makeSucceedStep $ ArrowState space pos (doTurn heading d) nextStack
+      M.TurnComm d    -> makeSucceedStep $ ArrowState space pos (doTurn heading d) stack
       M.CaseComm d as -> getMatchingCommands (lookDir d state) as 
-      M.CallComm com  -> if Map.member com e then prepend $ getCommandList(e Map.! com) else Fail $ "Command: " ++ show com ++ "was not found in environment: " ++ show e
-
-    getCommandList :: Commands -> [M.Command]
-    getCommandList (M.Commands cs) = cs
+      M.CallComm com  -> if Map.member com e then prepend $ e Map.! com else Fail $ "Command: " ++ show com ++ "was not found in environment: " ++ show e
 
     getMatchingCommands :: Contents -> M.Alts -> Step
     getMatchingCommands _ (M.Alts []) = Fail "Incomplete pattern match"
     getMatchingCommands c (M.Alts ((M.Alt pat (M.Commands cs)):as)) = if matches pat c then prepend cs else getMatchingCommands c (M.Alts as)
 
-    prepend commands = Ok $ ArrowState space pos heading (M.Commands (commands ++ stack))
+    prepend commands = Ok $ ArrowState space pos heading (commands ++ stack)
 
     matches :: M.Pat -> Contents -> Bool
     matches p c = case p of 
@@ -169,5 +165,4 @@ step e state@(ArrowState space pos heading (M.Commands (firstCommand:stack)))
       M.BoundaryPat   -> c == Boundary
 
     makeSucceedStep :: ArrowState -> Step
-    makeSucceedStep as@(ArrowState sp po he (M.Commands st)) = if null st then Done sp po he else Ok as
-
+    makeSucceedStep as@(ArrowState sp po he st) = if null st then Done sp po he else Ok as

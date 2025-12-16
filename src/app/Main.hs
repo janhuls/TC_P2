@@ -34,9 +34,9 @@ interactive e as = loop (Ok as)
         Done {} -> return ()
         Fail _     -> return ()
         Ok as' -> do
-          putStrLn "Continue? (y/n)"
+          putStrLn "Continue? (press enter to continue)"
           input <- getLine
-          when (input == "y") $ loop (doStep e step)
+          loop (doStep e step)
 
 printStep :: Step -> String
 printStep (Fail s) = s

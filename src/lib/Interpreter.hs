@@ -73,7 +73,7 @@ type Ident = String
 type Commands = [M.Command]
 type Heading = Direction
 
-data Direction = N | E | S | W
+data Direction = N | E | S | W deriving Show
 
 getNextPos :: Pos -> Heading -> Pos
 getNextPos (x, y) dir = case dir of 
@@ -82,14 +82,14 @@ getNextPos (x, y) dir = case dir of
   S -> (x, y + 1)
   W -> (x - 1, y)
 
-dirToPos :: M.Dir -> Heading -> Pos -> Pos 
-dirToPos d h p = getNextPos p (doTurn h d)
+dirToNextPos :: M.Dir -> Heading -> Pos -> Pos 
+dirToNextPos d h p = getNextPos p (doTurn h d)
 
 rotateLeft d = case d of 
-  N -> E
-  E -> S
-  S -> W
-  W -> N
+  N -> W
+  E -> N
+  S -> E
+  W -> S
 
 rotateRight = rotateLeft . rotateLeft . rotateLeft 
 
@@ -100,9 +100,9 @@ doTurn d dir = case dir of
                 _          -> d
 
 lookDir :: M.Dir -> ArrowState -> Contents
-lookDir d (ArrowState space pos heading _) = if Map.member next space then space Map.! next else Boundary 
+lookDir d (ArrowState space pos heading _) = getContentsSafe space next
   where
-    next = dirToPos d heading pos
+    next = dirToNextPos d heading pos
 
 type Environment = Map Ident Commands
 
@@ -114,6 +114,9 @@ data Step =  Done  Space Pos Heading
           |  Fail  String
 
 -- | Exercise 8
+toStack :: Environment -> Commands
+toStack e = e Map.! "start"
+
 toEnvironment :: String -> Environment
 toEnvironment s = if isValid then environment else error "invalid program" where
   program = parser $ alexScanTokens s
@@ -122,15 +125,17 @@ toEnvironment s = if isValid then environment else error "invalid program" where
   environment = foldl (\acc (M.Rule ident (M.Commands cmds)) -> Map.insert ident cmds acc) Map.empty rules
 
 -- | Exercise 9
+getContentsSafe :: Space -> Pos -> Contents
+getContentsSafe space point = if Map.member point space then space Map.! point else Boundary
+
 step :: Environment -> ArrowState -> Step
 step _ (ArrowState s p h []) = Done s p h
 step e state@(ArrowState space pos heading (firstCommand:stack))
   = getStep 
   where
     nextPos = getNextPos pos heading
-    getContents point = if Map.member point space then space Map.! point else Boundary
-    nextContent = getContents nextPos
-    currentContent = getContents pos
+    nextContent = getContentsSafe space nextPos
+    currentContent = getContentsSafe space pos
     getStep = case firstCommand of 
       M.GoComm        -> case nextContent of 
                           Empty     -> makeSucceedStep $ ArrowState space nextPos heading stack
@@ -144,7 +149,7 @@ step e state@(ArrowState space pos heading (firstCommand:stack))
                          else
                            Fail $ "Nothing to take, space: " ++ printSpace space ++ "\npos: " ++ show pos
       M.MarkComm      -> makeSucceedStep $ ArrowState (Map.adjust (const Lambda) pos space) pos heading stack
-      M.NothingComm   -> makeSucceedStep state
+      M.NothingComm   -> makeSucceedStep $ ArrowState space pos heading stack
       M.TurnComm d    -> makeSucceedStep $ ArrowState space pos (doTurn heading d) stack
       M.CaseComm d as -> getMatchingCommands (lookDir d state) as 
       M.CallComm com  -> if Map.member com e then prepend $ e Map.! com else Fail $ "Command: " ++ show com ++ "was not found in environment: " ++ show e

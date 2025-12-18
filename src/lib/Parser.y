@@ -35,12 +35,14 @@ import Model
 
 Program   : Rules                 { Program $1}
 
-Rules     : Rule '.' Rules        { $1 : $3 }
+Rules     :                       { [] }
+          | Rule '.' Rules        { $1 : $3 }
           | Rule '.'              { [$1] }
 
 Rule      : ident arrow Commands  { Rule $1 $3 }
 
-Commands  : Command               { Commands [$1] }
+Commands  :                       { Commands [] }
+          | Command               { Commands [$1] }
           | Commands ',' Command  { let (Commands cs) = $1 in Commands (cs ++ [$3])}
 
 Command   : go                    { GoComm }
@@ -55,7 +57,8 @@ Dir       : left                  { LeftDir }
           | right                 { RightDir }
           | front                 { FrontDir }
 
-Alts      : Alt                   { Alts [$1]}
+Alts      :                       { Alts [] }
+          | Alt                   { Alts [$1] }
           | Alts ';' Alt          { let (Alts as) = $1 in Alts (as ++ [$3]) }
 
 Alt       : Pat arrow Commands    { Alt $1 $3 }

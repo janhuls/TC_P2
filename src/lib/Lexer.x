@@ -30,4 +30,4 @@ tokens :-
   Asteroid                {\_ -> Asteroidtoken}
   Boundary                {\_ -> Boundarytoken}
   "_"                     {\_ -> Underscore}
-  ([0-9a-zA-Z]|"+"|"-")+  {\s -> Ident s}
+  ([0-9a-zA-Z]|"+"|"-")+  {\s -> Ident s} -- idk if + - is allowed here but i dont see it in autograder

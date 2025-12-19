@@ -41,9 +41,12 @@ Rules     :                       { [] }
 
 Rule      : ident arrow Commands  { Rule $1 $3 }
 
+
+CommandList : Command             { [$1] }
+            | Command ',' CommandList { $1 : $3 }
+
 Commands  :                       { Commands [] }
-          | Command               { Commands [$1] }
-          | Commands ',' Command  { let (Commands cs) = $1 in Commands (cs ++ [$3])}
+          | CommandList           { Commands $1 }
 
 Command   : go                    { GoComm }
           | take                  { TakeComm }
@@ -57,9 +60,11 @@ Dir       : left                  { LeftDir }
           | right                 { RightDir }
           | front                 { FrontDir }
 
+AltList   : Alt                   { [$1] }
+          | Alt ';' AltList       { $1 : $3 }
+
 Alts      :                       { Alts [] }
-          | Alt                   { Alts [$1] }
-          | Alts ';' Alt          { let (Alts as) = $1 in Alts (as ++ [$3]) }
+          | AltList               { Alts $1 }
 
 Alt       : Pat arrow Commands    { Alt $1 $3 }
 
